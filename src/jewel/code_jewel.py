@@ -2,44 +2,33 @@ import adafruit_logging as logging
 log = logging.getLogger()
 log.setLevel(10)
 
+import board
+from jewel.pausable_pixels import PausablePixels
+from core.buttons import Buttons
+from microcontroller import Pin
+from core.loop import main_loop, ErrorHandlerResumeOnButtonPress
+from jewel.view_jewel import ViewJewel
+from core.connection.sgt_connection_bluetooth import SgtConnectionBluetooth
+
+# === Constants and Setup ===
+BTN_PIN = board.D4
+LED_PIN = board.D6
+LED_COUNT = 19
+LED_BRIGHTNESS = 1
+
 # Suggested Script and Action Mapping
 # These are sent on connection to the SGT to pre-populate the Action/Write scripts for quick save.
 BLE_DEVICE_NAME = "Jewel"
 BLUETOOTH_FIELD_DIVIDER = ';'
-BLUETOOTH_FIELD_ORDER = ['sgtTimerMode','sgtState','sgtColorHsv','sgtTurnTime','sgtPlayerTime','sgtTotalPlayTime','sgtTimeReminders']
-
-# ---------- SHARED IMPORTS -------------#
-import board
+BLUETOOTH_FIELD_ORDER = ['sgtTimerMode','sgtState','sgtColorHsv','sgtTurnTime','sgtPlayerTime','sgtTotalPlayTime','sgtTimeReminders', 'sgtPlayerColors', 'sgtPlayerActions']
 
 # ---------- VIEW SETUP -------------#
-from core.view.view_multi import ViewMulti
-from core.view.view_console import ViewConsole
-from jewel.view_mono_light import ViewMonoLight
-from jewel.view_time_reminder_onoff import ViewTimeReminderOnOff
-from jewel.pausable_pixels import PausablePixels
-from adafruit_led_animation.helper import PixelSubset
-_dots = PausablePixels(board.D6, 19, brightness=0.3, auto_write=False)
-outer_ring = PixelSubset(_dots, 0, 12)
-central_dot = PixelSubset(_dots, 12, 13)
-middle_ring = PixelSubset(_dots, 13, 19)
-central_disk = PixelSubset(_dots, 12, 19)
-
-def vibrate_on():
-	central_disk.fill((255,0,0))
-	central_disk.show()
-def vibrate_off():
-	central_disk.fill((0,0,0))
-	central_disk.show()
-
-view = ViewMulti([
-	ViewConsole(),
-	ViewMonoLight(outer_ring),
-	ViewTimeReminderOnOff(vibrate_on, vibrate_off),
-	])
+pixels = PausablePixels(LED_PIN, LED_COUNT, brightness=LED_BRIGHTNESS, auto_write=False)
+view = ViewJewel(pixels)
 view.set_state(None)
 
 # ---------- BLUETOOTH SETUP -------------#
-from core.connection.sgt_connection_bluetooth import SgtConnectionBluetooth
+
 sgt_connection = SgtConnectionBluetooth(view,
 		device_name=BLE_DEVICE_NAME,
 		field_order=BLUETOOTH_FIELD_ORDER,
@@ -47,10 +36,7 @@ sgt_connection = SgtConnectionBluetooth(view,
 	)
 
 # ---------- BUTTONS SETUP -------------#
-from core.buttons import Buttons
-from microcontroller import Pin
-btn_pin = board.D4  # The button pin used for the single button on the Jewel
-buttons = Buttons({btn_pin: False})
+buttons = Buttons({BTN_PIN: False})
 def btn_callback(pin: Pin, presses: int, long_press: bool):
 	log.info(f"Button pressed: {presses} times, long press: {long_press}")
 	def on_success():
@@ -69,24 +55,23 @@ def btn_callback(pin: Pin, presses: int, long_press: bool):
 
 def pressed_keys_callback(pins: set[Pin]):
 	if len(pins) == 0:
-		_dots.pause = False
-		central_dot.fill(0x0)
-		central_dot.show()
+		pixels.pause = False
+		pixels.fill(0x0)
+		pixels.show()
 	else:
-		_dots.pause = False
-		central_dot.fill(0xFFFFFF)
-		central_dot.show()
-		_dots.pause = True
+		pixels.pause = False
+		pixels.fill(0xFFFFFF)
+		pixels.show()
+		pixels.pause = True
 
 # ---------- MAIN LOOP -------------#
-from core.loop import main_loop, ErrorHandlerResumeOnButtonPress
 error_handler = ErrorHandlerResumeOnButtonPress(view, buttons)
 def on_connect():
 	buttons.clear_callbacks()
-	buttons.set_callback(pin=btn_pin, presses=1, callback = btn_callback)
-	buttons.set_callback(pin=btn_pin, presses=2, callback = btn_callback)
-	buttons.set_callback(pin=btn_pin, presses=1, long_press=True, callback = btn_callback)
-	buttons.set_callback(pin=btn_pin, presses=2, long_press=True, callback = btn_callback)
+	buttons.set_callback(pin=BTN_PIN, presses=1, callback = btn_callback)
+	buttons.set_callback(pin=BTN_PIN, presses=2, callback = btn_callback)
+	buttons.set_callback(pin=BTN_PIN, presses=1, long_press=True, callback = btn_callback)
+	buttons.set_callback(pin=BTN_PIN, presses=2, long_press=True, callback = btn_callback)
 	buttons.set_pressed_keys_update_callback(pressed_keys_callback)
 
 main_loop(sgt_connection, view, on_connect, error_handler.on_error, (buttons.loop,))

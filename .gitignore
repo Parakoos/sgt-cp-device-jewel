@@ -7,4 +7,7 @@ System Volume Information
 boot_out.txt
 sd
 settings.toml
-mpy-cross*.exe
+mpy-cross*
+**/*_settings.py
+**/*.mpy
+compile.ps1
