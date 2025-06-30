@@ -8,7 +8,6 @@ from core.buttons import Buttons
 from microcontroller import Pin
 from core.loop import main_loop, ErrorHandlerResumeOnButtonPress
 from jewel.view_jewel import ViewJewel
-from core.connection.sgt_connection_bluetooth import SgtConnectionBluetooth
 
 # === Constants and Setup ===
 BTN_PIN = board.D4
@@ -16,24 +15,21 @@ LED_PIN = board.D6
 LED_COUNT = 19
 LED_BRIGHTNESS = 1
 
-# Suggested Script and Action Mapping
-# These are sent on connection to the SGT to pre-populate the Action/Write scripts for quick save.
-BLE_DEVICE_NAME = "Jewel"
-BLUETOOTH_FIELD_DIVIDER = ';'
-BLUETOOTH_FIELD_ORDER = ['sgtTimerMode','sgtState','sgtColorHsv','sgtTurnTime','sgtPlayerTime','sgtTotalPlayTime','sgtTimeReminders', 'sgtPlayerColors', 'sgtPlayerActions']
+# ---------- VIEW AND CONNECTION SETUP -------------#
+from core.connection.sgt_connection_bluetooth import SgtConnectionBluetooth as SgtStreamConnection
+# from core.connection.sgt_connection_serial import SgtConnectionSerial as SgtStreamConnection
+DEVICE_NAME = "Jewel"
+FIELD_DIVIDER = ';'
+FIELD_ORDER = ['sgtTimerMode','sgtState','sgtColorHsv','sgtTurnTime','sgtPlayerTime','sgtTotalPlayTime','sgtTimeReminders', 'sgtPlayerColors', 'sgtPlayerActions']
 
-# ---------- VIEW SETUP -------------#
 pixels = PausablePixels(LED_PIN, LED_COUNT, brightness=LED_BRIGHTNESS, auto_write=False)
 view = ViewJewel(pixels)
 view.set_state(None)
-
-# ---------- BLUETOOTH SETUP -------------#
-
-sgt_connection = SgtConnectionBluetooth(view,
-		device_name=BLE_DEVICE_NAME,
-		field_order=BLUETOOTH_FIELD_ORDER,
-		field_divider=BLUETOOTH_FIELD_DIVIDER,
-	)
+sgt_connection = SgtStreamConnection(view,
+	device_name=DEVICE_NAME,
+	field_order=FIELD_ORDER,
+	field_divider=FIELD_DIVIDER,
+)
 
 # ---------- BUTTONS SETUP -------------#
 buttons = Buttons({BTN_PIN: False})
